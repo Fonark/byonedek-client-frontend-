@@ -359,7 +359,7 @@ const GamePage = () => {
             />
             <div className="w-40 shrink-0">
               <ChessClock
-                timeMs={isWhite ? blackClock : whiteClock}
+                timeMs={isWhite ? displayBlackMs : displayWhiteMs}
                 isActive={isOpponentActive}
                 color={opponentColor}
                 playerName={opponentNickname || 'Opponent'}
@@ -390,7 +390,7 @@ const GamePage = () => {
             />
             <div className="w-40 shrink-0">
               <ChessClock
-                timeMs={isWhite ? whiteClock : blackClock}
+                timeMs={isWhite ? displayWhiteMs : displayBlackMs}
                 isActive={isMyActive}
                 color={playerColor || 'white'}
                 playerName={playerNickname || 'You'}

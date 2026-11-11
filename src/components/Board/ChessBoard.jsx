@@ -161,6 +161,20 @@ const ChessBoard = ({
   const [dragState, setDragState] = useState(null);
   const [hoverSquare, setHoverSquare] = useState(null);
 
+  // localFen: state internal board untuk optimistic render.
+  // Update LANGSUNG saat user gerak bidak tanpa nunggu server.
+  const [localFen, setLocalFen] = useState(fen);
+  const [localLastMove, setLocalLastMove] = useState(lastMove);
+
+  // Sync localFen saat parent kirim fen baru (server confirm atau lawan gerak)
+  useEffect(() => {
+    setLocalFen(fen);
+  }, [fen]);
+
+  useEffect(() => {
+    setLocalLastMove(lastMove);
+  }, [lastMove]);
+
   // ── Arrow state ────────────────────────────────────────────────────────────
   // arrows: Array<{ from, to, color }>
   const [arrows, setArrows] = useState([]);
@@ -183,9 +197,9 @@ const ChessBoard = ({
 
   // Parse board
   const chess = useMemo(() => {
-    try { return new Chess(fen); }
+    try { return new Chess(localFen); }
     catch { return new Chess(); }
-  }, [fen]);
+  }, [localFen]);
 
   const isMyTurn = useMemo(() => {
     if (disabled || !playerColor) return false;
@@ -230,11 +244,24 @@ const ChessBoard = ({
         setPendingPromotion({ from: fromSquare, to: toSquare });
         return;
       }
+
+      // Optimistic move: langsung perbarui board lokal (0ms delay)
+      try {
+        const moveClone = new Chess(localFen);
+        const res = moveClone.move({ from: fromSquare, to: toSquare });
+        if (res) {
+          setLocalFen(moveClone.fen());
+          setLocalLastMove({ from: fromSquare, to: toSquare });
+        }
+      } catch {
+        // Abaikan error parsing lokal
+      }
+
       if (onMove) onMove({ from: fromSquare, to: toSquare });
       setSelectedSquare(null);
       setLegalMoves([]);
     },
-    [chess, onMove]
+    [chess, localFen, onMove]
   );
 
   // ── LEFT Pointer Down: piece selection / move ──────────────────────────────
@@ -422,8 +449,25 @@ const ChessBoard = ({
 
   // ── Promotion handlers ─────────────────────────────────────────────────────
   const handlePromotionSelect = (promotionPiece) => {
-    if (pendingPromotion && onMove) {
-      onMove({ from: pendingPromotion.from, to: pendingPromotion.to, promotion: promotionPiece });
+    if (pendingPromotion) {
+      try {
+        const moveClone = new Chess(localFen);
+        const res = moveClone.move({
+          from: pendingPromotion.from,
+          to: pendingPromotion.to,
+          promotion: promotionPiece,
+        });
+        if (res) {
+          setLocalFen(moveClone.fen());
+          setLocalLastMove({ from: pendingPromotion.from, to: pendingPromotion.to });
+        }
+      } catch {
+        // Abaikan
+      }
+
+      if (onMove) {
+        onMove({ from: pendingPromotion.from, to: pendingPromotion.to, promotion: promotionPiece });
+      }
     }
     setPendingPromotion(null);
     setSelectedSquare(null);
@@ -476,7 +520,8 @@ const ChessBoard = ({
 
             const isSelected = selectedSquare === square;
             const isLegalMove = legalMoves.includes(square);
-            const isSquareLastMove = lastMove && (lastMove.from === square || lastMove.to === square);
+            const activeLastMove = localLastMove || lastMove;
+            const isSquareLastMove = activeLastMove && (activeLastMove.from === square || activeLastMove.to === square);
             const isKingInCheck = checkSquare === square;
             const isHovered = hoverSquare === square;
             const isDraggingSource = dragState && dragState.isDragging && dragState.from === square;
