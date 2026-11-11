@@ -68,12 +68,21 @@ const GameOverModal = ({
     return () => cancelAnimationFrame(t);
   }, []);
 
-  if (!result || !result.winner) {
+  if (!result || (!result.winner && !result.condition)) {
     return null;
   }
 
-  const { winner, condition } = result;
-  const conditionInfo = CONDITION_MAP[condition] ?? { label: condition, Icon: Trophy };
+  // Normalize winner: if winner is missing but condition implies draw, set to 'draw'
+  const rawWinner = result.winner;
+  const winner = rawWinner || (
+    ['stalemate', 'draw-agreement', 'draw_agreed', 'draw', 'insufficient', 'repetition', 'threefold', 'fifty_move', 'fifty-move'].includes(result.condition)
+      ? 'draw'
+      : null
+  );
+
+  if (!winner) return null;
+  const { condition } = result;
+  const conditionInfo = CONDITION_MAP[condition] ?? { label: condition || 'Game Over', Icon: Trophy };
   const { label: conditionLabel, Icon: ConditionIcon } = conditionInfo;
 
   // ── Determine headline ───────────────────────────────────────────────────

@@ -405,8 +405,19 @@ export function GameProvider({ children }) {
     const onMoveMade = (data) => {
       const gameObj = data.game || {};
       const fen = data.fen || gameObj.fen;
-      const res = data.result || gameObj.result;
-      const status = gameObj.gameStatus === 'completed' || data.status?.isGameOver ? 'completed' : 'playing';
+
+      // result from top-level (set by server when game ended via checkmate/stalemate/draw)
+      // or from gameObj.result, but only if winner is non-null
+      const topResult = data.result && data.result.winner ? data.result : null;
+      const objResult = gameObj.result && gameObj.result.winner ? gameObj.result : null;
+      const res = topResult || objResult || null;
+
+      // gameStatus: trust server's explicit field, or infer from status.isGameOver
+      const rawStatus = data.gameStatus || gameObj.gameStatus;
+      const status = rawStatus === 'completed' || data.status?.isGameOver || res
+        ? 'completed'
+        : 'playing';
+
       dispatch({
         type: 'APPLY_MOVE',
         payload: {
@@ -421,6 +432,7 @@ export function GameProvider({ children }) {
         },
       });
 
+      // If game ended (from server's explicit result), trigger game-over immediately
       if (res && res.winner) {
         dispatch({ type: 'SET_GAME_OVER', payload: res });
       }

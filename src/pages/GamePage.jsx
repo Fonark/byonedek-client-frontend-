@@ -444,7 +444,7 @@ const GamePage = () => {
       </div>
 
       {/* Game Over Modal */}
-      {gameResult && gameResult.winner && (
+      {gameResult && (gameResult.winner || gameResult.condition) && (
         <GameOverModal
           result={gameResult}
           playerColor={playerColor}
