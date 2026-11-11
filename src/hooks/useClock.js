@@ -21,51 +21,70 @@ const TICK_INTERVAL_MS = 100;
 
 /**
  * Custom hook for chess clock display.
+ * Clock ticks smoothly di client, disync saat server kirim update.
  *
  * @param {number}  whiteClock       - White's remaining time in ms (from server)
  * @param {number}  blackClock       - Black's remaining time in ms (from server)
  * @param {string}  activeColor      - 'w' | 'b'
  * @param {string}  gameStatus       - 'idle' | 'waiting' | 'playing' | 'completed'
  * @param {number|null} lastServerUpdate - Timestamp (Date.now()) of the last server update
- *
- * @returns {{ displayWhiteTime, displayBlackTime, isWhiteActive, isBlackActive, isWhiteLow, isBlackLow }}
  */
 export function useClock(whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate) {
+  // displayMs adalah state internal yang terus bergerak setiap 100ms
   const [displayWhiteMs, setDisplayWhiteMs] = useState(whiteClock);
   const [displayBlackMs, setDisplayBlackMs] = useState(blackClock);
 
-  // Keep latest props in a ref so the interval callback always sees fresh values
-  const clockRef = useRef({ whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate });
-  useEffect(() => {
-    clockRef.current = { whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate };
-  }, [whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate]);
+  // Ref internal clock — ini yang dipakai interval untuk hitung mundur
+  // Disimpan sebagai "baseMs" (nilai saat mulai tick) + "startedAt" (waktu mulai tick)
+  const internalRef = useRef({
+    whiteBase: whiteClock,
+    blackBase: blackClock,
+    activeColor,
+    startedAt: Date.now(),
+    gameStatus,
+  });
 
-  // Reset displayed times whenever the server sends updated clock values
+  // Setiap kali server kirim data baru (move-made, clock-updated, game-started)
+  // → reset base clock ke nilai server dan catat waktu sekarang sebagai titik awal
   useEffect(() => {
+    if (whiteClock == null || blackClock == null) return;
+    internalRef.current = {
+      whiteBase: whiteClock,
+      blackBase: blackClock,
+      activeColor,
+      startedAt: Date.now(),
+      gameStatus,
+    };
+    // Langsung tampilkan nilai server (snap to authoritative value)
     setDisplayWhiteMs(whiteClock);
     setDisplayBlackMs(blackClock);
-  }, [whiteClock, blackClock, lastServerUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whiteClock, blackClock, lastServerUpdate, activeColor]);
 
-  // Tick the clock client-side every 100 ms while the game is active
+  // Interval yang berjalan terus setiap 100ms saat game playing
+  // Menggunakan internalRef supaya selalu pakai nilai terbaru
   useEffect(() => {
     if (gameStatus !== 'playing') return;
 
     const intervalId = setInterval(() => {
-      const { whiteClock: wc, blackClock: bc, activeColor: ac, lastServerUpdate: lsu } = clockRef.current;
+      const { whiteBase, blackBase, activeColor: ac, startedAt, gameStatus: gs } = internalRef.current;
+      if (gs !== 'playing') return;
 
-      if (!lsu) return;
+      const elapsed = Date.now() - startedAt;
 
-      // How many ms have elapsed since the last authoritative server update
-      const elapsed = Date.now() - lsu;
+      const newWhite = ac === 'w' ? Math.max(0, whiteBase - elapsed) : whiteBase;
+      const newBlack = ac === 'b' ? Math.max(0, blackBase - elapsed) : blackBase;
 
-      const whiteMs = ac === 'w' ? Math.max(0, wc - elapsed) : wc;
-      const blackMs = ac === 'b' ? Math.max(0, bc - elapsed) : bc;
-
-      setDisplayWhiteMs(whiteMs);
-      setDisplayBlackMs(blackMs);
+      setDisplayWhiteMs(newWhite);
+      setDisplayBlackMs(newBlack);
     }, TICK_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
+  }, [gameStatus]);
+
+  // Update ref gameStatus tanpa restart interval
+  useEffect(() => {
+    internalRef.current.gameStatus = gameStatus;
   }, [gameStatus]);
 
   const isWhiteActive = gameStatus === 'playing' && activeColor === 'w';
