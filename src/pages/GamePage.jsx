@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { Chess } from 'chess.js';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import { useGame } from '../context/GameContext';
@@ -42,6 +43,7 @@ const GamePage = () => {
     flipBoard,
     resetGame,
     lobbyId: contextLobbyId,
+    dispatch,
   } = useGame();
 
   // If opening a different lobby than what's currently in context, reset previous game
@@ -159,17 +161,46 @@ const GamePage = () => {
     }
   }, [gameResult, playGameOver]);
 
-  // Make move handler
+  // Make move handler — OPTIMISTIC UI
+  // Bidak langsung pindah di layar, baru kirim ke server
   const handleMove = useCallback(
     (moveData) => {
       if (!socket || gameStatus !== 'playing') return;
+
+      // 1. Hitung FEN baru secara lokal (optimistic)
+      try {
+        const chess = new Chess(fen);
+        const result = chess.move({
+          from: moveData.from,
+          to: moveData.to,
+          promotion: moveData.promotion || 'q',
+        });
+        if (result) {
+          // Update board SEKARANG tanpa nunggu server
+          dispatch({
+            type: 'APPLY_MOVE',
+            payload: {
+              fen: chess.fen(),
+              move: { from: result.from, to: result.to, san: result.san, promotion: result.promotion },
+              moveHistory: undefined, // akan diisi server
+              whiteClock: undefined,
+              blackClock: undefined,
+              activeColor: chess.turn(),
+            },
+          });
+        }
+      } catch {
+        // Kalau gagal hitung lokal, tetap kirim ke server saja
+      }
+
+      // 2. Kirim ke server (server akan konfirmasi / broadcast ke lawan)
       socket.emit('make-move', {
         gameId,
         lobbyId,
         move: moveData,
       });
     },
-    [socket, gameId, lobbyId, gameStatus]
+    [socket, gameId, lobbyId, gameStatus, fen, dispatch]
   );
 
   // Resign handler
