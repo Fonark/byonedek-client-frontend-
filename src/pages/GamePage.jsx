@@ -171,13 +171,14 @@ const GamePage = () => {
     }
   }, [gameResult, playGameOver]);
 
-  // Make move handler — OPTIMISTIC UI
-  // Bidak langsung pindah di layar, baru kirim ke server
+  // Make move handler — OPTIMISTIC UI (board only, no game-over detection)
+  // Bidak langsung pindah di layar, baru kirim ke server.
+  // Game-over HANYA dari server — jangan pernah declare winner di sisi client.
   const handleMove = useCallback(
     (moveData) => {
       if (!socket || !isGameActive) return;
 
-      // 1. Hitung FEN baru secara lokal (optimistic)
+      // 1. Hitung FEN baru secara lokal hanya untuk animasi papan
       try {
         const chess = new Chess(fen);
         const result = chess.move({
@@ -186,17 +187,8 @@ const GamePage = () => {
           promotion: moveData.promotion || 'q',
         });
         if (result) {
-          const isCheckmate = chess.isCheckmate();
-          const isStalemate = chess.isStalemate();
-          let localResult = undefined;
-          if (isCheckmate) {
-            const winner = chess.turn() === 'w' ? 'black' : 'white';
-            localResult = { winner, condition: 'checkmate' };
-          } else if (isStalemate) {
-            localResult = { winner: 'draw', condition: 'stalemate' };
-          }
-
-          // Update board SEKARANG tanpa nunggu server
+          // Update board SEKARANG tanpa nunggu server — TANPA game-over detection
+          // Server adalah satu-satunya sumber kebenaran untuk game-over
           dispatch({
             type: 'APPLY_MOVE',
             payload: {
@@ -206,7 +198,7 @@ const GamePage = () => {
               whiteClock: undefined,
               blackClock: undefined,
               activeColor: chess.turn(),
-              result: localResult,
+              result: null, // ← selalu null, server yang kirim winner
             },
           });
         }
@@ -214,7 +206,7 @@ const GamePage = () => {
         // Kalau gagal hitung lokal, tetap kirim ke server saja
       }
 
-      // 2. Kirim ke server (server akan konfirmasi / broadcast ke lawan)
+      // 2. Kirim ke server (server yang validasi & broadcast ke lawan)
       socket.emit('make-move', {
         gameId,
         lobbyId,

@@ -129,27 +129,18 @@ function gameReducer(state, action) {
     case 'APPLY_MOVE': {
       const { fen, move, moveHistory, whiteClock, blackClock, activeColor, result, gameStatus } = action.payload;
       const chess = new Chess(fen);
-      const isCheckmate = chess.isCheckmate();
-      const isStalemate = chess.isStalemate();
-      const isDraw = chess.isDraw();
 
+      // Game-over HANYA dari server (result field yang dikirim server via move-made atau game-over event).
+      // Jangan pernah deteksi checkmate/stalemate secara lokal — FEN optimistic bisa stale/salah!
       let gameResult = state.gameResult;
-      let nextGameStatus = 'playing';
+      let nextGameStatus;
 
       if (result && result.winner) {
+        // Server confirm game-over
         gameResult = result;
         nextGameStatus = 'completed';
-      } else if (isCheckmate) {
-        const winner = chess.turn() === 'w' ? 'black' : 'white';
-        gameResult = { winner, condition: 'checkmate' };
-        nextGameStatus = 'completed';
-      } else if (isStalemate) {
-        gameResult = { winner: 'draw', condition: 'stalemate' };
-        nextGameStatus = 'completed';
-      } else if (isDraw) {
-        gameResult = { winner: 'draw', condition: 'draw' };
-        nextGameStatus = 'completed';
       } else if (gameStatus === 'completed' || state.gameStatus === 'completed') {
+        // Pertahankan status completed jika sudah ada
         nextGameStatus = 'completed';
       } else {
         nextGameStatus = 'playing';
