@@ -127,7 +127,7 @@ function gameReducer(state, action) {
     }
 
     case 'APPLY_MOVE': {
-      const { fen, move, moveHistory, whiteClock, blackClock, activeColor, result, gameStatus } = action.payload;
+      const { fen, move, moveHistory, whiteClock, blackClock, activeColor, result, gameStatus, isOptimistic } = action.payload;
       const chess = new Chess(fen);
 
       // Game-over HANYA dari server (result field yang dikirim server via move-made atau game-over event).
@@ -146,6 +146,10 @@ function gameReducer(state, action) {
         nextGameStatus = 'playing';
       }
 
+      // Jangan update lastServerUpdate jika ini adalah optimistic move dari client
+      // (mencegah useClock snap kembali ke nilai server lama sesaat setelah bidak digerakkan)
+      const isOptimisticMove = isOptimistic || (whiteClock === undefined && blackClock === undefined);
+
       return {
         ...state,
         fen,
@@ -159,7 +163,7 @@ function gameReducer(state, action) {
         legalMoves: [],
         gameResult,
         gameStatus: nextGameStatus,
-        lastServerUpdate: Date.now(),
+        lastServerUpdate: isOptimisticMove ? state.lastServerUpdate : Date.now(),
       };
     }
 

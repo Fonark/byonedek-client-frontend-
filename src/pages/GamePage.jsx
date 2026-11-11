@@ -199,6 +199,7 @@ const GamePage = () => {
               blackClock: undefined,
               activeColor: chess.turn(),
               result: null, // ← selalu null, server yang kirim winner
+              isOptimistic: true,
             },
           });
         }
