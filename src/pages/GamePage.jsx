@@ -72,6 +72,12 @@ const GamePage = () => {
   });
   const [guestNickname, setGuestNickname] = useState('');
 
+  const handleTimeoutClaim = useCallback((losingColor) => {
+    if (socket && gameStatus === 'playing') {
+      socket.emit('claim-timeout', { gameId, lobbyId, losingColor });
+    }
+  }, [socket, gameStatus, gameId, lobbyId]);
+
   // Chess clock calculations
   const {
     displayWhiteTime,
@@ -82,7 +88,7 @@ const GamePage = () => {
     isBlackActive,
     isWhiteLow,
     isBlackLow,
-  } = useClock(whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate);
+  } = useClock(whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate, handleTimeoutClaim);
 
   // Material & captured pieces
   const whiteCaptured = useMemo(() => getCapturedPieces(fen, 'w'), [fen]);

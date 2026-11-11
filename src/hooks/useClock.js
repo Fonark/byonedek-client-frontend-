@@ -23,16 +23,18 @@ const TICK_INTERVAL_MS = 100;
  * Custom hook for chess clock display.
  * Clock ticks smoothly di client setiap 100ms, snap ke nilai server saat ada update.
  */
-export function useClock(whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate) {
+export function useClock(whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate, onTimeout) {
   const [displayWhiteMs, setDisplayWhiteMs] = useState(whiteClock ?? 0);
   const [displayBlackMs, setDisplayBlackMs] = useState(blackClock ?? 0);
 
   // Refs selalu sinkron dengan nilai terbaru — aman dipakai di dalam interval
   const activeColorRef = useRef(activeColor);
   const gameStatusRef  = useRef(gameStatus);
+  const onTimeoutRef   = useRef(onTimeout);
 
   useEffect(() => { activeColorRef.current = activeColor; }, [activeColor]);
   useEffect(() => { gameStatusRef.current  = gameStatus;  }, [gameStatus]);
+  useEffect(() => { onTimeoutRef.current   = onTimeout;   }, [onTimeout]);
 
   // Snap ke nilai server setiap kali server kirim update (move-made, game-started, dll)
   useEffect(() => {
@@ -47,9 +49,21 @@ export function useClock(whiteClock, blackClock, activeColor, gameStatus, lastSe
       if (gameStatusRef.current !== 'playing') return;
       const ac = activeColorRef.current;
       if (ac === 'w') {
-        setDisplayWhiteMs(prev => Math.max(0, prev - TICK_INTERVAL_MS));
+        setDisplayWhiteMs(prev => {
+          const next = Math.max(0, prev - TICK_INTERVAL_MS);
+          if (next === 0 && prev > 0 && onTimeoutRef.current) {
+            onTimeoutRef.current('white');
+          }
+          return next;
+        });
       } else if (ac === 'b') {
-        setDisplayBlackMs(prev => Math.max(0, prev - TICK_INTERVAL_MS));
+        setDisplayBlackMs(prev => {
+          const next = Math.max(0, prev - TICK_INTERVAL_MS);
+          if (next === 0 && prev > 0 && onTimeoutRef.current) {
+            onTimeoutRef.current('black');
+          }
+          return next;
+        });
       }
     }, TICK_INTERVAL_MS);
     return () => clearInterval(id);
