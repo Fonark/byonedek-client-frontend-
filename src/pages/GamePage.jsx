@@ -76,6 +76,8 @@ const GamePage = () => {
   const {
     displayWhiteTime,
     displayBlackTime,
+    displayWhiteMs,
+    displayBlackMs,
     isWhiteActive,
     isBlackActive,
     isWhiteLow,
