@@ -62,14 +62,7 @@ function gameReducer(state, action) {
         playerColor: resolvedColor ?? state.playerColor,
         playerNickname: resolvedNickname ?? state.playerNickname,
         reconnectToken: reconnectToken ?? state.reconnectToken,
-        gameStatus: status ?? 'waiting',
-        gameResult: null, // Always clear previous game result
-        drawOffer: null,
-        rematchRequest: null,
-        moveHistory: [],
-        lastMove: null,
-        isInCheck: false,
-        fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        gameStatus: status ?? state.gameStatus,
         isBoardFlipped: (resolvedColor ?? state.playerColor) === 'black',
       };
     }
@@ -233,14 +226,14 @@ function gameReducer(state, action) {
       // Determine effective game status:
       // - If lobby is 'waiting' or 'abandoned', the game is not active — show waiting screen
       // - If game is 'active' or lobby is 'playing'/'ready', show the game
-      // - If game is 'completed' AND lobby is still 'playing', show result
+      // - If game is 'completed' or lobby is 'completed', show completed state
       let gameStatus;
-      if (rawLobbyStatus === 'waiting' || rawLobbyStatus === 'abandoned') {
+      if (rawGameStatus === 'completed' || rawLobbyStatus === 'completed') {
+        gameStatus = 'completed';
+      } else if (rawLobbyStatus === 'waiting' || rawLobbyStatus === 'abandoned') {
         gameStatus = 'waiting';
       } else if (rawGameStatus === 'active' || rawLobbyStatus === 'playing') {
         gameStatus = 'playing';
-      } else if (rawGameStatus === 'completed' && rawLobbyStatus === 'playing') {
-        gameStatus = 'completed';
       } else if (rawLobbyStatus === 'ready') {
         gameStatus = 'waiting';
       } else {
@@ -251,11 +244,9 @@ function gameReducer(state, action) {
         sessionStorage.setItem(RECONNECT_TOKEN_KEY, payload.reconnectToken);
       }
 
-      // Only restore game result if the game is genuinely completed with a winner
-      // AND the lobby is still in a playing/completed state (not waiting/abandoned)
+      // Restore game result if the game is completed
       const rawResult = gameObj.result || payload.result || payload.gameResult;
-      const isLobbyActive = rawLobbyStatus === 'playing';
-      const validResult = (rawResult && rawResult.winner && isLobbyActive && gameStatus === 'completed')
+      const validResult = (rawResult && (rawResult.winner || rawResult.condition) && gameStatus === 'completed')
         ? rawResult
         : null;
 

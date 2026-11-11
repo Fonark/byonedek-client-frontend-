@@ -38,9 +38,12 @@ const CONDITION_MAP = {
   stalemate:        { label: "by Stalemate",         Icon: Minus },
   'draw-agreement': { label: "by Agreement",         Icon: Handshake },
   draw_agreed:      { label: "by Agreement",         Icon: Handshake },
+  draw:             { label: "Draw",                Icon: Minus },
   insufficient:     { label: "Insufficient Material", Icon: Minus },
   repetition:       { label: "by Repetition",        Icon: Minus },
+  threefold:        { label: "by Threefold Repetition", Icon: Minus },
   fifty_move:       { label: "by 50-Move Rule",      Icon: Minus },
+  'fifty-move':     { label: "by 50-Move Rule",      Icon: Minus },
 };
 
 /**
