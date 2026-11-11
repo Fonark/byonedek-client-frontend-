@@ -184,6 +184,16 @@ const GamePage = () => {
           promotion: moveData.promotion || 'q',
         });
         if (result) {
+          const isCheckmate = chess.isCheckmate();
+          const isStalemate = chess.isStalemate();
+          let localResult = undefined;
+          if (isCheckmate) {
+            const winner = chess.turn() === 'w' ? 'black' : 'white';
+            localResult = { winner, condition: 'checkmate' };
+          } else if (isStalemate) {
+            localResult = { winner: 'draw', condition: 'stalemate' };
+          }
+
           // Update board SEKARANG tanpa nunggu server
           dispatch({
             type: 'APPLY_MOVE',
@@ -194,6 +204,7 @@ const GamePage = () => {
               whiteClock: undefined,
               blackClock: undefined,
               activeColor: chess.turn(),
+              result: localResult,
             },
           });
         }

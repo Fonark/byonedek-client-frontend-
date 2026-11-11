@@ -134,8 +134,30 @@ function gameReducer(state, action) {
     }
 
     case 'APPLY_MOVE': {
-      const { fen, move, moveHistory, whiteClock, blackClock, activeColor } = action.payload;
+      const { fen, move, moveHistory, whiteClock, blackClock, activeColor, result, gameStatus } = action.payload;
       const chess = new Chess(fen);
+      const isCheckmate = chess.isCheckmate();
+      const isStalemate = chess.isStalemate();
+      const isDraw = chess.isDraw();
+
+      let gameResult = state.gameResult;
+      let nextGameStatus = gameStatus || state.gameStatus;
+
+      if (result && result.winner) {
+        gameResult = result;
+        nextGameStatus = 'completed';
+      } else if (isCheckmate) {
+        const winner = chess.turn() === 'w' ? 'black' : 'white';
+        gameResult = { winner, condition: 'checkmate' };
+        nextGameStatus = 'completed';
+      } else if (isStalemate) {
+        gameResult = { winner: 'draw', condition: 'stalemate' };
+        nextGameStatus = 'completed';
+      } else if (isDraw) {
+        gameResult = { winner: 'draw', condition: 'draw' };
+        nextGameStatus = 'completed';
+      }
+
       return {
         ...state,
         fen,
@@ -147,6 +169,8 @@ function gameReducer(state, action) {
         isInCheck: chess.inCheck(),
         selectedSquare: null,
         legalMoves: [],
+        gameResult,
+        gameStatus: nextGameStatus,
         lastServerUpdate: Date.now(),
       };
     }
@@ -386,6 +410,7 @@ export function GameProvider({ children }) {
     const onMoveMade = (data) => {
       const gameObj = data.game || {};
       const fen = data.fen || gameObj.fen;
+      const res = data.result || gameObj.result;
       dispatch({
         type: 'APPLY_MOVE',
         payload: {
@@ -395,8 +420,14 @@ export function GameProvider({ children }) {
           whiteClock: data.whiteClock ?? data.whiteRemainingTime ?? gameObj.whiteRemainingTime,
           blackClock: data.blackClock ?? data.blackRemainingTime ?? gameObj.blackRemainingTime,
           activeColor: data.activeColor || gameObj.activeColor,
+          result: res,
+          gameStatus: gameObj.gameStatus,
         },
       });
+
+      if (res && res.winner) {
+        dispatch({ type: 'SET_GAME_OVER', payload: res });
+      }
     };
 
     const onClockUpdated = (data) => {
