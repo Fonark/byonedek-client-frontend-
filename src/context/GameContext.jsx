@@ -134,7 +134,7 @@ function gameReducer(state, action) {
       const isDraw = chess.isDraw();
 
       let gameResult = state.gameResult;
-      let nextGameStatus = gameStatus || state.gameStatus;
+      let nextGameStatus = 'playing';
 
       if (result && result.winner) {
         gameResult = result;
@@ -149,6 +149,10 @@ function gameReducer(state, action) {
       } else if (isDraw) {
         gameResult = { winner: 'draw', condition: 'draw' };
         nextGameStatus = 'completed';
+      } else if (gameStatus === 'completed' || state.gameStatus === 'completed') {
+        nextGameStatus = 'completed';
+      } else {
+        nextGameStatus = 'playing';
       }
 
       return {
@@ -402,6 +406,7 @@ export function GameProvider({ children }) {
       const gameObj = data.game || {};
       const fen = data.fen || gameObj.fen;
       const res = data.result || gameObj.result;
+      const status = gameObj.gameStatus === 'completed' || data.status?.isGameOver ? 'completed' : 'playing';
       dispatch({
         type: 'APPLY_MOVE',
         payload: {
@@ -412,7 +417,7 @@ export function GameProvider({ children }) {
           blackClock: data.blackClock ?? data.blackRemainingTime ?? gameObj.blackRemainingTime,
           activeColor: data.activeColor || gameObj.activeColor,
           result: res,
-          gameStatus: gameObj.gameStatus,
+          gameStatus: status,
         },
       });
 

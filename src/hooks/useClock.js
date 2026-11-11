@@ -46,7 +46,8 @@ export function useClock(whiteClock, blackClock, activeColor, gameStatus, lastSe
   // Tidak perlu restart interval, cukup baca ref yang selalu sinkron.
   useEffect(() => {
     const id = setInterval(() => {
-      if (gameStatusRef.current !== 'playing') return;
+      const gs = gameStatusRef.current;
+      if (gs !== 'playing' && gs !== 'active') return;
       const ac = activeColorRef.current;
       if (ac === 'w') {
         setDisplayWhiteMs(prev => {
@@ -69,8 +70,8 @@ export function useClock(whiteClock, blackClock, activeColor, gameStatus, lastSe
     return () => clearInterval(id);
   }, []); // sengaja tanpa deps — interval hidup selama komponen mount
 
-  const isWhiteActive = gameStatus === 'playing' && activeColor === 'w';
-  const isBlackActive = gameStatus === 'playing' && activeColor === 'b';
+  const isWhiteActive = (gameStatus === 'playing' || gameStatus === 'active') && activeColor === 'w';
+  const isBlackActive = (gameStatus === 'playing' || gameStatus === 'active') && activeColor === 'b';
 
   return {
     displayWhiteTime: formatTime(displayWhiteMs),

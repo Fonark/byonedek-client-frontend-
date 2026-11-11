@@ -72,11 +72,13 @@ const GamePage = () => {
   });
   const [guestNickname, setGuestNickname] = useState('');
 
+  const isGameActive = gameStatus === 'playing' || gameStatus === 'active';
+
   const handleTimeoutClaim = useCallback((losingColor) => {
-    if (socket && gameStatus === 'playing') {
+    if (socket && isGameActive) {
       socket.emit('claim-timeout', { gameId, lobbyId, losingColor });
     }
-  }, [socket, gameStatus, gameId, lobbyId]);
+  }, [socket, isGameActive, gameId, lobbyId]);
 
   // Chess clock calculations
   const {
@@ -88,7 +90,7 @@ const GamePage = () => {
     isBlackActive,
     isWhiteLow,
     isBlackLow,
-  } = useClock(whiteClock, blackClock, activeColor, gameStatus, lastServerUpdate, handleTimeoutClaim);
+  } = useClock(whiteClock, blackClock, activeColor, isGameActive ? 'playing' : gameStatus, lastServerUpdate, handleTimeoutClaim);
 
   // Material & captured pieces
   const whiteCaptured = useMemo(() => getCapturedPieces(fen, 'w'), [fen]);
@@ -173,7 +175,7 @@ const GamePage = () => {
   // Bidak langsung pindah di layar, baru kirim ke server
   const handleMove = useCallback(
     (moveData) => {
-      if (!socket || gameStatus !== 'playing') return;
+      if (!socket || !isGameActive) return;
 
       // 1. Hitung FEN baru secara lokal (optimistic)
       try {
@@ -219,21 +221,21 @@ const GamePage = () => {
         move: moveData,
       });
     },
-    [socket, gameId, lobbyId, gameStatus, fen, dispatch]
+    [socket, gameId, lobbyId, isGameActive, fen, dispatch]
   );
 
   // Resign handler
   const handleResign = useCallback(() => {
-    if (!socket || gameStatus !== 'playing') return;
+    if (!socket || !isGameActive) return;
     socket.emit('resign', { gameId, lobbyId });
-  }, [socket, gameId, lobbyId, gameStatus]);
+  }, [socket, gameId, lobbyId, isGameActive]);
 
   // Offer draw handler
   const handleOfferDraw = useCallback(() => {
-    if (!socket || gameStatus !== 'playing') return;
+    if (!socket || !isGameActive) return;
     socket.emit('offer-draw', { gameId, lobbyId });
     showToast('Draw offer sent to opponent', 'info');
-  }, [socket, gameId, lobbyId, gameStatus, showToast]);
+  }, [socket, gameId, lobbyId, isGameActive, showToast]);
 
   // Accept draw handler
   const handleAcceptDraw = useCallback(() => {
@@ -395,7 +397,7 @@ const GamePage = () => {
             lastMove={lastMove}
             isInCheck={isInCheck}
             onMove={handleMove}
-            disabled={gameStatus !== 'playing'}
+            disabled={!isGameActive}
           />
 
           {/* Player Section (Bottom) */}
