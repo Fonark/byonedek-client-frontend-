@@ -7,6 +7,8 @@ import {
   RefreshCw,
   Clock,
   Hash,
+  Undo2,
+  X,
 } from "lucide-react";
 import MoveHistory from "./MoveHistory";
 
@@ -64,6 +66,11 @@ const GameSidebar = ({
   playerColor = "white",
   onAcceptDraw,
   onDeclineDraw,
+  onOfferTakeback,
+  onAcceptTakeback,
+  onDeclineTakeback,
+  takebackOffer = null,
+  canTakeback = false,
   onRematch,
   rematchRequest = null,
   onAcceptRematch,
@@ -191,6 +198,39 @@ const GameSidebar = ({
         </div>
       )}
 
+      {/* ── Takeback offer UI (Lichess style) ──────────────────────────────── */}
+      {gameStatus === "playing" && takebackOffer === "received" && (
+        <div className="mx-3 mb-2 p-2 rounded-lg bg-[#262421] border border-[#81B64C]/40">
+          <p className="text-xs text-[#A8A8A8] mb-2 text-center">
+            Opponent proposes a takeback
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={onAcceptTakeback}
+              className="flex-1 py-1.5 rounded bg-[#81B64C] hover:bg-[#6fa33d] text-[#161512] text-xs font-bold transition-colors duration-150 flex items-center justify-center gap-1"
+            >
+              <Check size={13} />
+              Accept
+            </button>
+            <button
+              onClick={onDeclineTakeback}
+              className="flex-1 py-1.5 rounded bg-[#3d3a36] hover:bg-[#4a4744] text-white text-xs font-medium transition-colors duration-150 flex items-center justify-center gap-1"
+            >
+              <X size={13} />
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
+
+      {gameStatus === "playing" && takebackOffer === "sent" && (
+        <div className="mx-3 mb-2 p-2 rounded-lg bg-[#262421] border border-[#3d3a36]">
+          <p className="text-xs text-[#A8A8A8] text-center">
+            Takeback offer sent — waiting…
+          </p>
+        </div>
+      )}
+
       {/* ── Rematch UI ─────────────────────────────────────────────────────── */}
       {gameStatus === "over" && rematchRequest === "received" && (
         <div className="mx-3 mb-2 p-2 rounded-lg bg-[#262421] border border-[#81B64C]/40">
@@ -230,6 +270,18 @@ const GameSidebar = ({
 
         {gameStatus === "playing" && (
           <>
+            {/* Takeback (Lichess style) */}
+            {canTakeback && takebackOffer !== "sent" && (
+              <button
+                onClick={onOfferTakeback}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[#262421] hover:bg-[#3d3a36] text-[#A8A8A8] hover:text-white text-sm font-medium transition-all duration-150 border border-[#3d3a36]"
+                aria-label="Request takeback"
+              >
+                <Undo2 size={14} />
+                Takeback
+              </button>
+            )}
+
             {/* Offer draw */}
             {drawOffer !== "sent" && (
               <button

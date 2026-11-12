@@ -36,6 +36,7 @@ const GamePage = () => {
     isInCheck,
     gameResult,
     drawOffer,
+    takebackOffer,
     rematchRequest,
     isBoardFlipped,
     opponentConnected,
@@ -243,6 +244,46 @@ const GamePage = () => {
     showToast('Draw offer declined', 'info');
   }, [socket, gameId, lobbyId, showToast]);
 
+  // Takeback handlers (Lichess style)
+  const handleOfferTakeback = useCallback(() => {
+    if (!socket || !isGameActive) return;
+    socket.emit('offer-takeback', { gameId, lobbyId });
+    showToast('Takeback offer sent to opponent', 'info');
+  }, [socket, gameId, lobbyId, isGameActive, showToast]);
+
+  const handleAcceptTakeback = useCallback(() => {
+    if (!socket) return;
+    socket.emit('accept-takeback', { gameId, lobbyId });
+  }, [socket, gameId, lobbyId]);
+
+  const handleDeclineTakeback = useCallback(() => {
+    if (!socket) return;
+    socket.emit('decline-takeback', { gameId, lobbyId });
+    showToast('Takeback offer declined', 'info');
+  }, [socket, gameId, lobbyId, showToast]);
+
+  // Toast feedback for takeback events
+  useEffect(() => {
+    if (!socket) return;
+
+    const onTakebackDeclined = () => {
+      showToast('Opponent declined the takeback', 'info');
+    };
+
+    const onTakebackAccepted = () => {
+      showToast('Takeback accepted — move undone', 'success');
+      playMove();
+    };
+
+    socket.on('takeback-declined', onTakebackDeclined);
+    socket.on('takeback-accepted', onTakebackAccepted);
+
+    return () => {
+      socket.off('takeback-declined', onTakebackDeclined);
+      socket.off('takeback-accepted', onTakebackAccepted);
+    };
+  }, [socket, showToast, playMove]);
+
   // Rematch request handler
   const handleRematch = useCallback(() => {
     if (!socket) return;
@@ -338,6 +379,13 @@ const GamePage = () => {
       : 'received'
     : null;
 
+  // Takeback offer status for sidebar
+  const takebackOfferStatus = takebackOffer
+    ? takebackOffer === playerColor
+      ? 'sent'
+      : 'received'
+    : null;
+
   // Rematch status for sidebar
   const rematchStatus = rematchRequest
     ? rematchRequest === playerColor
@@ -389,6 +437,7 @@ const GamePage = () => {
             isBoardFlipped={isBoardFlipped}
             lastMove={lastMove}
             isInCheck={isInCheck}
+            moveCount={moveHistory.length}
             onMove={handleMove}
             disabled={!isGameActive}
           />
@@ -429,6 +478,11 @@ const GamePage = () => {
             playerColor={playerColor}
             onAcceptDraw={handleAcceptDraw}
             onDeclineDraw={handleDeclineDraw}
+            onOfferTakeback={handleOfferTakeback}
+            onAcceptTakeback={handleAcceptTakeback}
+            onDeclineTakeback={handleDeclineTakeback}
+            takebackOffer={takebackOfferStatus}
+            canTakeback={isGameActive && moveHistory.length > 0}
             onRematch={handleRematch}
             rematchRequest={rematchStatus}
             onAcceptRematch={handleRematch}

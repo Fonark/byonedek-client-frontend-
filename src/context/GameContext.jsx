@@ -35,6 +35,7 @@ const initialState = {
   isInCheck: false,
   gameResult: null,        // { winner, condition }
   drawOffer: null,         // null | 'white' | 'black'
+  takebackOffer: null,     // null | 'white' | 'black'
   rematchRequest: null,    // null | 'white' | 'black'
   boardFlipped: false,
   isBoardFlipped: false,
@@ -114,6 +115,7 @@ function gameReducer(state, action) {
         opponentNickname: oppNick,
         gameResult: null,
         drawOffer: null,
+        takebackOffer: null,
         rematchRequest: null,
         fen,
         activeColor: activeColor ?? chess.turn(),
@@ -200,6 +202,44 @@ function gameReducer(state, action) {
 
     case 'SET_DRAW_OFFER':
       return { ...state, drawOffer: action.payload };
+
+    case 'SET_TAKEBACK_OFFER':
+      return { ...state, takebackOffer: action.payload };
+
+    case 'TAKEBACK_APPLIED': {
+      const {
+        fen,
+        moveHistory,
+        lastMove,
+        activeColor,
+        whiteClock,
+        blackClock,
+      } = action.payload;
+
+      let chess;
+      try {
+        chess = new Chess(fen);
+      } catch {
+        chess = new Chess();
+      }
+
+      return {
+        ...state,
+        fen,
+        moveHistory: moveHistory ?? [],
+        lastMove: lastMove ?? null,
+        activeColor: activeColor ?? chess.turn(),
+        whiteClock: whiteClock ?? state.whiteClock,
+        blackClock: blackClock ?? state.blackClock,
+        isInCheck: chess.inCheck(),
+        selectedSquare: null,
+        legalMoves: [],
+        takebackOffer: null,
+        gameStatus: 'playing',
+        gameResult: null,
+        lastServerUpdate: Date.now(),
+      };
+    }
 
     case 'SET_REMATCH_REQUEST':
       return { ...state, rematchRequest: action.payload };
@@ -291,6 +331,7 @@ function gameReducer(state, action) {
         blackClock: gameObj.blackRemainingTime ?? payload.blackClock ?? state.blackClock,
         activeColor: gameObj.activeColor || payload.activeColor || chess.turn(),
         isInCheck: chess.inCheck(),
+        takebackOffer: gameObj.takebackOffer?.offeredBy || null,
         isBoardFlipped: playerColor === 'black',
         lastServerUpdate: Date.now(),
       };
@@ -479,6 +520,29 @@ export function GameProvider({ children }) {
       dispatch({ type: 'SET_DRAW_OFFER', payload: null });
     };
 
+    const onTakebackOffered = (data) => {
+      dispatch({ type: 'SET_TAKEBACK_OFFER', payload: data.offeredBy });
+    };
+
+    const onTakebackDeclined = () => {
+      dispatch({ type: 'SET_TAKEBACK_OFFER', payload: null });
+    };
+
+    const onTakebackAccepted = (data) => {
+      dispatch({
+        type: 'TAKEBACK_APPLIED',
+        payload: {
+          fen: data.fen,
+          moveHistory: data.moveHistory,
+          lastMove: data.lastMove,
+          activeColor: data.activeColor,
+          whiteClock: data.whiteClock ?? data.whiteRemainingTime,
+          blackClock: data.blackClock ?? data.blackRemainingTime,
+        },
+      });
+      dispatch({ type: 'SET_TAKEBACK_OFFER', payload: null });
+    };
+
     const onRematchRequested = (data) => {
       dispatch({ type: 'SET_REMATCH_REQUEST', payload: data.requestedBy });
     };
@@ -543,6 +607,9 @@ export function GameProvider({ children }) {
     socket.on('game-over', onGameOver);
     socket.on('draw-offered', onDrawOffered);
     socket.on('draw-declined', onDrawDeclined);
+    socket.on('takeback-offered', onTakebackOffered);
+    socket.on('takeback-declined', onTakebackDeclined);
+    socket.on('takeback-accepted', onTakebackAccepted);
     socket.on('rematch-requested', onRematchRequested);
     socket.on('rematch-started', onRematchStarted);
     socket.on('player-disconnected', onPlayerDisconnected);
@@ -560,6 +627,9 @@ export function GameProvider({ children }) {
       socket.off('game-over', onGameOver);
       socket.off('draw-offered', onDrawOffered);
       socket.off('draw-declined', onDrawDeclined);
+      socket.off('takeback-offered', onTakebackOffered);
+      socket.off('takeback-declined', onTakebackDeclined);
+      socket.off('takeback-accepted', onTakebackAccepted);
       socket.off('rematch-requested', onRematchRequested);
       socket.off('rematch-started', onRematchStarted);
       socket.off('player-disconnected', onPlayerDisconnected);
@@ -615,6 +685,10 @@ export function GameProvider({ children }) {
     dispatch({ type: 'SET_DRAW_OFFER', payload: offeredBy });
   }, []);
 
+  const setTakebackOffer = useCallback((offeredBy) => {
+    dispatch({ type: 'SET_TAKEBACK_OFFER', payload: offeredBy });
+  }, []);
+
   const setRematchRequest = useCallback((requestedBy) => {
     dispatch({ type: 'SET_REMATCH_REQUEST', payload: requestedBy });
   }, []);
@@ -644,6 +718,7 @@ export function GameProvider({ children }) {
     flipBoard,
     setGameOver,
     setDrawOffer,
+    setTakebackOffer,
     setRematchRequest,
     setOpponentConnected,
     resetGame,

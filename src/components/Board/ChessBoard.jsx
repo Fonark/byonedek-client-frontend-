@@ -152,6 +152,7 @@ const ChessBoard = ({
   isBoardFlipped = false,
   lastMove = null,
   isInCheck = false,
+  moveCount = 0,
   onMove,
   disabled = false,
 }) => {
@@ -190,10 +191,11 @@ const ChessBoard = ({
     setLocalFen(fen);
   }, [fen]);
 
-  // Animate opponent moves when received from parent props
+  // Animate opponent moves when received from parent props (only on forward moves)
   const prevLastMoveRef = useRef(lastMove);
+  const prevMoveCountRef = useRef(moveCount);
   useEffect(() => {
-    if (lastMove) {
+    if (lastMove && moveCount > prevMoveCountRef.current) {
       const isNewMove =
         !prevLastMoveRef.current ||
         prevLastMoveRef.current.from !== lastMove.from ||
@@ -212,8 +214,9 @@ const ChessBoard = ({
       }
     }
     prevLastMoveRef.current = lastMove;
+    prevMoveCountRef.current = moveCount;
     setLocalLastMove(lastMove);
-  }, [lastMove, localLastMove, triggerPieceAnimation]);
+  }, [lastMove, localLastMove, moveCount, triggerPieceAnimation]);
 
   // ── Arrow state ────────────────────────────────────────────────────────────
   // arrows: Array<{ from, to, color }>
