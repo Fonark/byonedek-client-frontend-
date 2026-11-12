@@ -262,6 +262,19 @@ function gameReducer(state, action) {
         if (whiteNick) oppNick = whiteNick;
       }
 
+      const history = gameObj.moveHistory || payload.moveHistory || state.moveHistory || [];
+      let restoredLastMove = state.lastMove;
+      if (history.length > 0) {
+        const lastEntry = history[history.length - 1];
+        if (lastEntry) {
+          if (lastEntry.move && lastEntry.move.length >= 4) {
+            restoredLastMove = { from: lastEntry.move.slice(0, 2), to: lastEntry.move.slice(2, 4) };
+          } else if (lastEntry.from && lastEntry.to) {
+            restoredLastMove = { from: lastEntry.from, to: lastEntry.to };
+          }
+        }
+      }
+
       return {
         ...state,
         lobbyId: payload.lobbyId || state.lobbyId,
@@ -272,7 +285,8 @@ function gameReducer(state, action) {
         gameStatus,
         gameResult: validResult,
         fen,
-        moveHistory: gameObj.moveHistory || payload.moveHistory || state.moveHistory,
+        moveHistory: history,
+        lastMove: restoredLastMove,
         whiteClock: gameObj.whiteRemainingTime ?? payload.whiteClock ?? state.whiteClock,
         blackClock: gameObj.blackRemainingTime ?? payload.blackClock ?? state.blackClock,
         activeColor: gameObj.activeColor || payload.activeColor || chess.turn(),

@@ -5,14 +5,6 @@ import ChessPiece from './ChessPiece';
 const LIGHT_BG = '#F0D9B5';
 const DARK_BG  = '#B58863';
 
-// Highlight colours
-const HIGHLIGHT = {
-  selected:   'rgba(20, 85, 30, 0.5)',
-  lastMove:   'rgba(205, 210, 106, 0.45)',
-  check:      'rgba(220, 20, 20, 0.6)',
-  hoverLegal: 'rgba(129, 182, 76, 0.55)',
-};
-
 const ChessSquare = ({
   square,
   piece,
@@ -32,17 +24,6 @@ const ChessSquare = ({
   const baseBg = isLight ? LIGHT_BG : DARK_BG;
   const labelColour = isLight ? DARK_BG : LIGHT_BG;
 
-  // Layered highlights (applied bottom → top via CSS gradient trick)
-  const overlays = [];
-  if (isInCheck) overlays.push(HIGHLIGHT.check);
-  if (isSelected) overlays.push(HIGHLIGHT.selected);
-  if (isLastMove) overlays.push(HIGHLIGHT.lastMove);
-  if (isHovered && isLegalMove) overlays.push(HIGHLIGHT.hoverLegal);
-
-  const background = overlays.length
-    ? [...overlays, baseBg].join(', ')
-    : baseBg;
-
   // Legal-move indicator
   const legalMoveIndicator = isLegalMove ? (
     piece ? (
@@ -55,6 +36,7 @@ const ChessSquare = ({
           height: '84%',
           border: '5px solid rgba(0, 0, 0, 0.22)',
           borderRadius: '50%',
+          zIndex: 6,
         }}
       />
     ) : (
@@ -69,6 +51,7 @@ const ChessSquare = ({
           width: '28%',
           height: '28%',
           background: 'rgba(0, 0, 0, 0.22)',
+          zIndex: 6,
         }}
       />
     )
@@ -90,27 +73,75 @@ const ChessSquare = ({
       onContextMenu={(e) => e.preventDefault()}
       className="relative flex items-center justify-center w-full h-full aspect-square select-none touch-none"
       style={{
-        background,
+        backgroundColor: baseBg,
         cursor: piece ? 'grab' : isLegalMove ? 'pointer' : 'default',
       }}
     >
-      {/* Arrow highlight tint (semi-transparent color overlay from right-click arrows) */}
+      {/* 1. Last move highlight (kuning seperti di Lichess / Chess.com) */}
+      {isLastMove && (
+        <div
+          className="absolute inset-0 pointer-events-none transition-colors duration-150"
+          style={{
+            backgroundColor: 'rgba(247, 247, 105, 0.55)', // Warm visible yellow
+            zIndex: 1,
+          }}
+        />
+      )}
+
+      {/* 2. Selected square highlight (hijau saat bidak dipilih) */}
+      {isSelected && (
+        <div
+          className="absolute inset-0 pointer-events-none transition-colors duration-150"
+          style={{
+            backgroundColor: 'rgba(20, 85, 30, 0.45)',
+            zIndex: 2,
+          }}
+        />
+      )}
+
+      {/* 3. Hovered legal move highlight */}
+      {isHovered && isLegalMove && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundColor: 'rgba(129, 182, 76, 0.55)',
+            zIndex: 3,
+          }}
+        />
+      )}
+
+      {/* 4. King in check highlight (merah menyala pada petak raja yang kena skak seperti di Lichess / Chess.com) */}
+      {isInCheck && (
+        <div
+          className="absolute inset-0 pointer-events-none animate-pulse"
+          style={{
+            background: 'radial-gradient(ellipse at center, rgba(255, 0, 0, 0.95) 0%, rgba(231, 0, 0, 0.75) 45%, rgba(169, 0, 0, 0.35) 75%, transparent 100%), rgba(220, 20, 20, 0.6)',
+            boxShadow: 'inset 0 0 14px rgba(255, 0, 0, 0.85)',
+            zIndex: 4,
+          }}
+        />
+      )}
+
+      {/* 5. Arrow highlight tint (semi-transparent color overlay from right-click arrows) */}
       {arrowHighlight && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background: arrowHighlight.fill,
             opacity: 0.3,
-            zIndex: 1,
+            zIndex: 5,
           }}
         />
       )}
 
-      {/* Coordinate labels */}
+      {/* 6. Legal-move indicator */}
+      {legalMoveIndicator}
+
+      {/* 7. Coordinate labels */}
       {showRankLabel && (
         <span
           className="absolute top-0.5 left-1 text-[10px] md:text-xs font-bold leading-none select-none pointer-events-none"
-          style={{ color: labelColour, zIndex: 2 }}
+          style={{ color: labelColour, zIndex: 7 }}
         >
           {square[1]}
         </span>
@@ -118,22 +149,19 @@ const ChessSquare = ({
       {showFileLabel && (
         <span
           className="absolute bottom-0.5 right-1 text-[10px] md:text-xs font-bold leading-none select-none pointer-events-none"
-          style={{ color: labelColour, zIndex: 2 }}
+          style={{ color: labelColour, zIndex: 7 }}
         >
           {square[0]}
         </span>
       )}
 
-      {/* Legal-move indicator */}
-      {legalMoveIndicator}
-
-      {/* Chess piece */}
+      {/* 8. Chess piece */}
       {piece && (
         <div
           className={`w-[88%] h-[88%] flex items-center justify-center pointer-events-none transition-opacity ${
             isDraggingSource ? 'opacity-20' : 'opacity-100'
           }`}
-          style={{ zIndex: 3 }}
+          style={{ zIndex: 8 }}
         >
           <ChessPiece piece={piece} size="100%" />
         </div>
