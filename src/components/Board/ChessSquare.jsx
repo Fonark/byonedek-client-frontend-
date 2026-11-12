@@ -5,6 +5,14 @@ import ChessPiece from './ChessPiece';
 const LIGHT_BG = '#F0D9B5';
 const DARK_BG  = '#B58863';
 
+function squareToCoords(sq, isBoardFlipped) {
+  const file = sq.charCodeAt(0) - 97; // 'a'=0 … 'h'=7
+  const rank = parseInt(sq[1], 10) - 1; // '1'=0 … '8'=7
+  const col = isBoardFlipped ? 7 - file : file;
+  const row = isBoardFlipped ? rank : 7 - rank;
+  return { col, row };
+}
+
 const ChessSquare = ({
   square,
   piece,
@@ -16,6 +24,8 @@ const ChessSquare = ({
   isHovered = false,
   isDraggingSource = false,
   arrowHighlight = null,   // { stroke, fill, opacity } | null — for right-click arrow tint
+  animationSource = null,  // string e.g. "e2" when animating from a square
+  isBoardFlipped = false,
   showRankLabel = false,
   showFileLabel = false,
   onPointerDown,
@@ -23,6 +33,18 @@ const ChessSquare = ({
 }) => {
   const baseBg = isLight ? LIGHT_BG : DARK_BG;
   const labelColour = isLight ? DARK_BG : LIGHT_BG;
+
+  // Smooth piece slide transition when moving by click or opponent move (Lichess style)
+  const slideStyle = animationSource ? (() => {
+    const coordsFrom = squareToCoords(animationSource, isBoardFlipped);
+    const coordsTo = squareToCoords(square, isBoardFlipped);
+    const deltaX = (coordsFrom.col - coordsTo.col) * 100;
+    const deltaY = (coordsFrom.row - coordsTo.row) * 100;
+    return {
+      '--slide-from-x': `${deltaX}%`,
+      '--slide-from-y': `${deltaY}%`,
+    };
+  })() : null;
 
   // Legal-move indicator
   const legalMoveIndicator = isLegalMove ? (
@@ -159,9 +181,14 @@ const ChessSquare = ({
       {piece && (
         <div
           className={`w-[88%] h-[88%] flex items-center justify-center pointer-events-none transition-opacity ${
+            slideStyle ? 'piece-slide' : ''
+          } ${
             isDraggingSource ? 'opacity-20' : 'opacity-100'
           }`}
-          style={{ zIndex: 8 }}
+          style={{
+            zIndex: slideStyle ? 15 : 8,
+            ...slideStyle,
+          }}
         >
           <ChessPiece piece={piece} size="100%" />
         </div>

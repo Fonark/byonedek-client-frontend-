@@ -360,14 +360,15 @@ a,
   animation: piece-move 0.2s ease-out;
 }
 
-/* Smooth piece translation (for animated move) */
+/* Smooth piece translation (for animated move like Lichess) */
 @keyframes piece-slide {
-  from { transform: translate(var(--slide-from-x), var(--slide-from-y)); }
-  to   { transform: translate(0, 0); }
+  from { transform: translate3d(var(--slide-from-x), var(--slide-from-y), 0); }
+  to   { transform: translate3d(0, 0, 0); }
 }
 
 .piece-slide {
-  animation: piece-slide 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: piece-slide 0.18s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+  will-change: transform;
 }
 
 /* Check flash red pulse */

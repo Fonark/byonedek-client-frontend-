@@ -166,14 +166,54 @@ const ChessBoard = ({
   const [localFen, setLocalFen] = useState(fen);
   const [localLastMove, setLocalLastMove] = useState(lastMove);
 
+  // ── Smooth piece slide animation (Lichess style) ───────────────────────────
+  // animatingMove: { from: 'e2', to: 'e4' } | null
+  const [animatingMove, setAnimatingMove] = useState(null);
+  const animTimerRef = useRef(null);
+
+  const triggerPieceAnimation = useCallback((from, to) => {
+    if (animTimerRef.current) clearTimeout(animTimerRef.current);
+    setAnimatingMove({ from, to });
+    animTimerRef.current = setTimeout(() => {
+      setAnimatingMove(null);
+    }, 220);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (animTimerRef.current) clearTimeout(animTimerRef.current);
+    };
+  }, []);
+
   // Sync localFen saat parent kirim fen baru (server confirm atau lawan gerak)
   useEffect(() => {
     setLocalFen(fen);
   }, [fen]);
 
+  // Animate opponent moves when received from parent props
+  const prevLastMoveRef = useRef(lastMove);
   useEffect(() => {
+    if (lastMove) {
+      const isNewMove =
+        !prevLastMoveRef.current ||
+        prevLastMoveRef.current.from !== lastMove.from ||
+        prevLastMoveRef.current.to !== lastMove.to;
+
+      if (isNewMove) {
+        const isLocalOptimistic =
+          localLastMove &&
+          localLastMove.from === lastMove.from &&
+          localLastMove.to === lastMove.to;
+
+        // Animate opponent move if it wasn't already animated locally
+        if (!isLocalOptimistic) {
+          triggerPieceAnimation(lastMove.from, lastMove.to);
+        }
+      }
+    }
+    prevLastMoveRef.current = lastMove;
     setLocalLastMove(lastMove);
-  }, [lastMove]);
+  }, [lastMove, localLastMove, triggerPieceAnimation]);
 
   // ── Arrow state ────────────────────────────────────────────────────────────
   // arrows: Array<{ from, to, color }>
@@ -232,7 +272,7 @@ const ChessBoard = ({
 
   // ── Move execution ─────────────────────────────────────────────────────────
   const executeMove = useCallback(
-    (fromSquare, toSquare) => {
+    (fromSquare, toSquare, isDrag = false) => {
       const movingPiece = chess.get(fromSquare);
       const isPromotion =
         movingPiece &&
@@ -243,6 +283,11 @@ const ChessBoard = ({
       if (isPromotion) {
         setPendingPromotion({ from: fromSquare, to: toSquare });
         return;
+      }
+
+      // Trigger smooth glide animation for click-to-move (drag-and-drop moves instantly on release)
+      if (!isDrag) {
+        triggerPieceAnimation(fromSquare, toSquare);
       }
 
       // Optimistic move: langsung perbarui board lokal (0ms delay)
@@ -261,7 +306,7 @@ const ChessBoard = ({
       setSelectedSquare(null);
       setLegalMoves([]);
     },
-    [chess, localFen, onMove]
+    [chess, localFen, onMove, triggerPieceAnimation]
   );
 
   // ── LEFT Pointer Down: piece selection / move ──────────────────────────────
@@ -278,7 +323,7 @@ const ChessBoard = ({
     const currentLegalMoves = legalMovesRef.current;
 
     if (currentSelected && currentLegalMoves.includes(square)) {
-      executeMove(currentSelected, square);
+      executeMove(currentSelected, square, false);
       return;
     }
 
@@ -405,7 +450,7 @@ const ChessBoard = ({
             const currentMoves = chess.moves({ square: fromSquare, verbose: true });
             const isLegal = currentMoves.some((m) => m.to === targetSquare);
             if (isLegal) {
-              executeMove(fromSquare, targetSquare);
+              executeMove(fromSquare, targetSquare, true);
               return;
             }
           }
@@ -450,6 +495,7 @@ const ChessBoard = ({
   // ── Promotion handlers ─────────────────────────────────────────────────────
   const handlePromotionSelect = (promotionPiece) => {
     if (pendingPromotion) {
+      triggerPieceAnimation(pendingPromotion.from, pendingPromotion.to);
       try {
         const moveClone = new Chess(localFen);
         const res = moveClone.move({
@@ -543,6 +589,8 @@ const ChessBoard = ({
                 isHovered={isHovered}
                 isDraggingSource={isDraggingSource}
                 arrowHighlight={arrowHighlight}
+                animationSource={animatingMove && animatingMove.to === square ? animatingMove.from : null}
+                isBoardFlipped={isBoardFlipped}
                 showRankLabel={showRankLabel}
                 showFileLabel={showFileLabel}
                 onPointerDown={handlePointerDown}
