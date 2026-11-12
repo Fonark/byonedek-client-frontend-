@@ -63,18 +63,18 @@ function ArrowSVG({ from, to, color, isBoardFlipped }) {
   const shaftWidth = 0.14;
   const headLength = 0.3;
   const headWidth  = 0.26;
-  const circleRadius = 0.22;
+  const circleRadius = 0.42; // Seukuran kotak (radius 0.42 unit dalam 1 unit per petak)
 
   if (isSameSquare) {
-    // Render a filled circle for a "highlighted" square annotation
+    // Render lingkaran penanda petak yang pas seukuran kotak bidak
     return (
       <circle
         cx={f.x * 8}
         cy={f.y * 8}
-        r={circleRadius * 8 * 0.9}
+        r={circleRadius}
         fill="none"
         stroke={color.stroke}
-        strokeWidth={0.12 * 8}
+        strokeWidth={0.07}
         opacity={color.opacity}
       />
     );
