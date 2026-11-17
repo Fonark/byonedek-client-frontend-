@@ -66,9 +66,16 @@ const GamePage = () => {
   const [hasJoined, setHasJoined] = useState(false);
 
   // If new guest opening invite link without session, prompt for nickname
+  // RECONNECT FIX: Jika user punya reconnectToken untuk lobby ini, JANGAN tampilkan modal
+  // (mereka adalah pemain lama yang refresh/disconnect, bukan tamu baru)
   const [showJoinModal, setShowJoinModal] = useState(() => {
     const storedLobby = sessionStorage.getItem('chess_current_lobby_id');
     const storedNick = sessionStorage.getItem('chess_nickname');
+    const storedToken = sessionStorage.getItem('chess_reconnect_token');
+    // Jika user punya nickname DAN punya reconnectToken DAN lobby-nya sama → ini reconnect, skip modal
+    const isReturningPlayer = Boolean(storedNick && storedToken && storedLobby === lobbyId);
+    if (isReturningPlayer) return false;
+    // User baru atau dari lobby berbeda → tampilkan modal
     return Boolean(lobbyId && (storedLobby !== lobbyId || !storedNick));
   });
   const [guestNickname, setGuestNickname] = useState('');

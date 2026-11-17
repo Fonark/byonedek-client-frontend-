@@ -271,7 +271,7 @@ function gameReducer(state, action) {
         gameStatus = 'completed';
       } else if (rawLobbyStatus === 'waiting' || rawLobbyStatus === 'abandoned') {
         gameStatus = 'waiting';
-      } else if (rawGameStatus === 'active' || rawLobbyStatus === 'playing') {
+      } else if (rawGameStatus === 'active' || rawGameStatus === 'playing' || rawLobbyStatus === 'playing') {
         gameStatus = 'playing';
       } else if (rawLobbyStatus === 'ready') {
         gameStatus = 'waiting';
