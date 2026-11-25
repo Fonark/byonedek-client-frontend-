@@ -562,7 +562,7 @@ const ChessBoard = ({
             const square = `${file}${rank}`;
             const fileNum = FILES.indexOf(file);
             const rankNum = parseInt(rank, 10);
-            const isLight = (fileNum + rankNum) % 2 !== 0;
+            const isLight = (fileNum + rankNum) % 2 === 0;
 
             const pieceObj = chess.get(square);
             const pieceCode = pieceObj ? `${pieceObj.color}${pieceObj.type.toUpperCase()}` : null;
