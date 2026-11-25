@@ -135,6 +135,22 @@ const GamePage = () => {
     }, 3500);
   }, []);
 
+  // AUTO-REJOIN setelah disconnect jaringan (tanpa refresh halaman)
+  // Ketika socket auto-reconnect, hasJoined di-reset agar join-lobby dikirim ulang
+  // Ini mencegah player terhubung ke server tapi tidak ada di room lobby
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleSocketReconnect = () => {
+      setHasJoined(false); // reset → join effect akan jalan ulang otomatis
+    };
+
+    socket.on('connect', handleSocketReconnect);
+    return () => {
+      socket.off('connect', handleSocketReconnect);
+    };
+  }, [socket]);
+
   // Join or reconnect to lobby on mount
   useEffect(() => {
     if (!socket || !isConnected || hasJoined || showJoinModal) return;
